@@ -1,0 +1,13 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Local test data
+data/
+
+# Secrets (API keys from Phase 2)
+.env
+
+# macOS
+.DS_Store
