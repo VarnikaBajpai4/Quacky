@@ -80,19 +80,19 @@ Use `information_schema.columns` + `LIMIT 3` samples + row count. Cut long value
 | `SELECT 1; DROP TABLE sales` | rejected |
 | `SELECT * FROM read_csv('/etc/passwd')` | rejected/fails |
 | `SET enable_external_access = true` | rejected |
-| slow triple self cross join | stops at timeout |
+| slow triple self cross join with `SUM(a.x*b.x*c.x)` (a plain `COUNT(*)` finishes in <1 s, so it does not test the timeout) | stops at timeout |
 
 ### Step 6 — CLI
 `python -m quacky.cli data/chinook.db data/sales.csv data/messy.xlsx` → load, lock, print schema, SQL loop.
 **Done:** a join across two different sources works.
 
 ### Phase 1 checklist
-- [ ] All source types load (Postgres via free Neon/Supabase, or skip)
-- [ ] Schema printout is clear
-- [ ] All 6 safety tests pass
-- [ ] Cross-source join works
-- [ ] README lists known issues
-- [ ] Committed to Git
+- [x] All source types load (CSV, Excel, SQLite tested; Postgres written but not tested yet)
+- [x] Schema printout is clear
+- [x] All 6 safety tests pass
+- [x] Cross-source join works (CSV × SQLite, Excel × SQLite)
+- [x] README lists known issues
+- [x] Committed to Git
 
 ## Later project ideas
 - **Potion Lab** — RL on an original multi-turn deduction game.

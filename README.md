@@ -20,6 +20,23 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## Usage
+
+```bash
+python -m quacky.cli data/chinook.db data/countries.csv data/messy.xlsx
+```
+
+Quacky loads every source, locks DuckDB (no file access, no config changes), prints the schema, and opens a prompt. Type one SQL query per line. Commands: `.schema`, `.help`, `.quit`. Options: `--timeout` (seconds, default 10), `--max-rows` (default 1000).
+
+```
+quacky> SELECT COUNT(*) FROM chinook.main.invoices
+ count_star()
+          412
+(1 row(s))
+quacky> DROP TABLE countries
+Rejected: Only SELECT queries are allowed, got DROP.
+```
+
 ## Test data
 
 `data/` is gitignored. Rebuild it with:
@@ -44,4 +61,6 @@ python scripts/make_messy_xlsx.py
 - **Schema size.** Every table goes into the schema text (14 test tables ≈ 8,000 characters). Large databases will not fit in a prompt. Planned fix: table retrieval in Phase 6.
 - **Sample values repeat.** Examples are the first 3 rows, not 3 distinct values (e.g. `Quarter e.g. Q3, Q3, Q3`).
 - **The parse check is strict.** Some valid read-only DuckDB syntax (`SUMMARIZE`, `PIVOT`, `DESCRIBE`) is rejected, because the runner allows only plain SELECT and set operations.
+- **Postgres is not tested yet.** The connector is written, but no Postgres server was available for testing.
+- **One line per query.** The CLI reads one line at a time, so multi-line SQL must be typed on one line.
 - **No memory limit.** The timeout stops long queries, but a query can still use a lot of memory before it is stopped.
