@@ -41,3 +41,7 @@ python scripts/make_messy_xlsx.py
 
 - **Country names differ across sources.** Chinook uses `USA`, `United Kingdom`, `Czech Republic`; the countries CSV uses other names (e.g. `Czechia`). A join on country name drops these rows.
 - **Excel header detection.** `messy.xlsx` sheet `Sales` has a title row, so a default read gives headers like `Q3 Sales Report`, `Unnamed: 1`, and numbers typed as text. Planned fix: Phase 6.
+- **Schema size.** Every table goes into the schema text (14 test tables ≈ 8,000 characters). Large databases will not fit in a prompt. Planned fix: table retrieval in Phase 6.
+- **Sample values repeat.** Examples are the first 3 rows, not 3 distinct values (e.g. `Quarter e.g. Q3, Q3, Q3`).
+- **The parse check is strict.** Some valid read-only DuckDB syntax (`SUMMARIZE`, `PIVOT`, `DESCRIBE`) is rejected, because the runner allows only plain SELECT and set operations.
+- **No memory limit.** The timeout stops long queries, but a query can still use a lot of memory before it is stopped.
