@@ -13,7 +13,7 @@ from urllib.parse import urlparse
 
 import duckdb
 import openai
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv
 
 from quacky.connectors import POSTGRES_PREFIXES, load_source
 from quacky.llm import MODEL, PROVIDER, Answer, ask, make_client
@@ -32,7 +32,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--model", default=MODEL, help=f"OpenRouter model (default {MODEL})")
     parser.add_argument("--provider", default=PROVIDER, help=f"pinned provider endpoint (default {PROVIDER})")
     args = parser.parse_args(argv)
-    load_dotenv()
+    # Read .env from the folder the user runs Quacky in (or a parent), not from
+    # wherever the package is installed.
+    load_dotenv(find_dotenv(usecwd=True))
     client = make_client()
 
     con = duckdb.connect()

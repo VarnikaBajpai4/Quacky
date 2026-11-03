@@ -6,26 +6,36 @@
 
 <p align="center"><em>Ask Quacky anything about your data.</em></p>
 
+<p align="center">
+  <a href="https://github.com/VarnikaBajpai4/Quacky/actions/workflows/tests.yml"><img src="https://github.com/VarnikaBajpai4/Quacky/actions/workflows/tests.yml/badge.svg" alt="tests"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license"></a>
+</p>
+
 Plug-and-play "ask your data" tool. Connect a source (CSV, Excel, SQLite, Postgres), ask a question in plain English, and Quacky writes DuckDB SQL, runs it safely, and returns the answer.
 
 > **Status:** Phase 2 — questions in plain English, answered by an LLM through OpenRouter.
+
+> **Local-first.** Quacky runs on your own machine with your own API key. It is not built for public hosting: a hosted version would need login, per-user isolation, upload limits and spend limits that Quacky does not have.
 
 ## Setup
 
 Requires Python 3.11+.
 
 ```bash
+git clone https://github.com/VarnikaBajpai4/Quacky.git && cd Quacky
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env   # then put your OpenRouter key in .env
+pip install -r requirements.txt -e .   # exact tested versions, plus the `quacky` command
+cp .env.example .env                   # then put your OpenRouter key in .env
 ```
 
 ## Usage
 
 ```bash
-python -m quacky.cli data/chinook.db data/countries.csv data/messy.xlsx
+quacky data/chinook.db data/countries.csv data/messy.xlsx
 ```
+
+(`python -m quacky.cli ...` works too.)
 
 Quacky loads every source, locks DuckDB (no file access, no config changes), prints the schema, and opens a prompt. Type a question in plain English. The model writes DuckDB SQL, Quacky checks and runs it, and if it fails, the error goes back to the model (up to 3 tries).
 
@@ -63,6 +73,15 @@ python scripts/make_messy_xlsx.py
 | `data/countries.csv` | [datasets/country-codes](https://github.com/datasets/country-codes) | CSV loading; joins to `customers.Country` |
 | `data/messy.xlsx` | `scripts/make_messy_xlsx.py` | Title row above headers, empty column; `Targets` sheet joins to `employees.EmployeeId` |
 
+## Tests
+
+```bash
+pip install -e ".[dev]"
+pytest
+```
+
+The tests build their own small data files, so they need no downloads. They never call a paid API: the LLM step is tested with a fake client, and the CLI tests run outside the project folder so no `.env` key is found. CI runs them on Python 3.11, 3.12 and 3.13.
+
 ## Known issues
 
 - **Country names differ across sources.** Chinook uses `USA`, `United Kingdom`, `Czech Republic`; the countries CSV uses other names (e.g. `Czechia`). A join on country name drops these rows.
@@ -73,3 +92,7 @@ python scripts/make_messy_xlsx.py
 - **Postgres is not tested yet.** The connector is written, but no Postgres server was available for testing.
 - **One line per query.** The CLI reads one line at a time, so multi-line SQL must be typed on one line.
 - **No memory limit.** The timeout stops long queries, but a query can still use a lot of memory before it is stopped.
+
+## License
+
+[MIT](LICENSE) © 2026 Varnika Bajpai
