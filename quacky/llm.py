@@ -33,7 +33,7 @@ Rules:
 - Tables listed without a dot are in the default database. Write the others with their full name, for example chinook.main.invoices.
 - The data can be messy. Check the example values before you assume a format, a spelling or a unit.
 - If the tables cannot answer the question, return an empty string as "sql" and say why in "note".
-- In "note", say in one short sentence what the query does, or what you assumed.
+- In "note", write one short plain sentence about what the result shows, plus any assumption a reader must know. Do not describe your reasoning steps.
 
 Tables:
 

@@ -236,13 +236,15 @@ def _show_answer(answer: Answer) -> None:
         elif answer.attempts:
             st.warning(f"No answer after {len(answer.attempts)} tries. Try asking another way.",
                        icon=":material/help:")
-        if answer.note:
-            st.markdown(answer.note)
+        if answer.note and not answer.ok:
+            st.markdown(answer.note)  # with no answer, the note is the reason
 
         if answer.attempts:
             tries = len(answer.attempts)
             label = "SQL" if tries == 1 else f"SQL · {tries} tries"
             with st.expander(label, icon=":material/code:"):
+                if answer.note and answer.ok:
+                    st.caption(answer.note)  # how it was answered sits with the SQL, not the answer
                 for i, attempt in enumerate(answer.attempts, start=1):
                     if attempt.error:
                         st.caption(f"Try {i} failed: {attempt.error.splitlines()[0]}")

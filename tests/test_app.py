@@ -71,3 +71,21 @@ def test_sql_tab_runs_safe_queries_and_rejects_unsafe_ones(app, sources):
     app.text_area(key="sql").set_value("SELECT * FROM read_csv('/etc/passwd')")
     click(app, "Run")
     assert "disabled by configuration" in app.error[0].value
+
+
+def test_note_sits_with_the_sql_not_next_to_the_answer(app, sources):
+    import pandas as pd
+
+    from quacky.llm import Answer, Attempt
+
+    load(app, sources)
+    answered = Answer(question="How many?", attempts=[Attempt("SELECT 1")],
+                      df=pd.DataFrame({"n": [1]}), note="Counts the rows.")
+    unanswered = Answer(question="Weather?", note="There is no weather data.")
+    app.session_state["history"] = [answered, unanswered]
+    app.run()
+
+    main_text = [m.value for m in app.main.markdown]
+    assert "Counts the rows." not in main_text  # not shown as part of the answer
+    assert any("Counts the rows." in c.value for c in app.expander[0].caption)  # shown with the SQL
+    assert "There is no weather data." in main_text  # with no answer, the reason is shown
