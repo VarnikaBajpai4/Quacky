@@ -8,7 +8,7 @@
 
 Plug-and-play "ask your data" tool. Connect a source (CSV, Excel, SQLite, Postgres), ask a question in plain English, and Quacky writes DuckDB SQL, runs it safely, and returns the answer.
 
-> **Status:** Phase 1 — plug-and-play core (connectors, schema reader, safe runner, CLI). No ML yet.
+> **Status:** Phase 2 — questions in plain English, answered by an LLM through OpenRouter.
 
 ## Setup
 
@@ -18,6 +18,7 @@ Requires Python 3.11+.
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env   # then put your OpenRouter key in .env
 ```
 
 ## Usage
@@ -26,16 +27,24 @@ pip install -r requirements.txt
 python -m quacky.cli data/chinook.db data/countries.csv data/messy.xlsx
 ```
 
-Quacky loads every source, locks DuckDB (no file access, no config changes), prints the schema, and opens a prompt. Type one SQL query per line. Commands: `.schema`, `.help`, `.quit`. Options: `--timeout` (seconds, default 10), `--max-rows` (default 1000).
+Quacky loads every source, locks DuckDB (no file access, no config changes), prints the schema, and opens a prompt. Type a question in plain English. The model writes DuckDB SQL, Quacky checks and runs it, and if it fails, the error goes back to the model (up to 3 tries).
+
+Commands: `.sql <query>` (run your own SQL), `.schema`, `.help`, `.quit`. Options: `--timeout` (seconds, default 10), `--max-rows` (default 1000), `--model`, `--provider`.
 
 ```
-quacky> SELECT COUNT(*) FROM chinook.main.invoices
+quacky> .sql SELECT COUNT(*) FROM chinook.main.invoices
  count_star()
           412
 (1 row(s))
-quacky> DROP TABLE countries
+quacky> .sql DROP TABLE countries
 Rejected: Only SELECT queries are allowed, got DROP.
 ```
+
+### Model
+
+Default: `deepseek/deepseek-v4.1-flash` on OpenRouter, pinned to the `deepinfra/fp8` endpoint with fallbacks off. Pinning one endpoint keeps the model weights and precision the same on every run, so results stay comparable. If that endpoint is down, requests fail instead of moving to another provider. The answer prints the token count and the real cost from OpenRouter.
+
+**What is sent to the model:** the question and the schema text, which includes 3 example values per column. The query results stay on your machine.
 
 ## Test data
 
