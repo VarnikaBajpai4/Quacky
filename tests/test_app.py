@@ -22,29 +22,34 @@ def click(app, label):
     next(b for b in app.button if b.label == label).click().run()
 
 
+def page_html(app):
+    return " ".join(h.value for h in app.get("html"))
+
+
 def load(app, sources):
     app.text_area[0].set_value("\n".join(sources))
     click(app, "Load data")
 
 
-def test_starts_with_a_hint_to_load_data(app):
+def test_starts_with_an_empty_state(app):
     assert not app.exception
-    assert "Load some data" in app.info[0].value
+    assert "The pond is quiet" in page_html(app)
+    assert not app.tabs
 
 
 def test_loads_sources_and_shows_the_schema(app, sources):
     load(app, sources)
     assert not app.exception
-    loaded = [c.value for c in app.sidebar.caption]
-    assert any("shop.db: 2 table(s)" in c for c in loaded)
-    assert any("messy.xlsx: 2 table(s)" in c for c in loaded)
+    loaded = [m.value for m in app.sidebar.markdown]
+    assert any("shop.db" in m and "2 tables" in m for m in loaded)
+    assert any("countries.csv" in m and "1 table<" in m for m in loaded)
     assert "Table shop.main.invoices (4 rows)" in app.code[0].value
 
 
 def test_bad_source_shows_an_error_and_loads_nothing(app, tmp_path):
     load(app, [str(tmp_path / "missing.csv")])
     assert "File not found" in app.sidebar.error[0].value
-    assert "Load some data" in app.info[0].value
+    assert "The pond is quiet" in page_html(app)
 
 
 def test_no_key_warns_and_disables_questions(app, sources):

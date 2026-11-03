@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="400" height="400">
+  <!-- background -->
+  <circle cx="100" cy="100" r="96" fill="#FFF4D6"/>
+  <!-- body -->
+  <ellipse cx="100" cy="135" rx="55" ry="40" fill="#FFD84D"/>
+  <!-- wing -->
+  <ellipse cx="75" cy="135" rx="20" ry="14" fill="#F5C22E" transform="rotate(-15 75 135)"/>
+  <!-- head -->
+  <circle cx="110" cy="82" r="38" fill="#FFD84D"/>
+  <!-- hair tuft -->
+  <path d="M108 44 q6 -14 14 -6 q-8 0 -6 8" fill="#F5C22E"/>
+  <!-- eyes -->
+  <circle cx="98" cy="78" r="6" fill="#2B2B2B"/>
+  <circle cx="124" cy="78" r="6" fill="#2B2B2B"/>
+  <circle cx="100" cy="76" r="2" fill="#fff"/>
+  <circle cx="126" cy="76" r="2" fill="#fff"/>
+  <!-- cheeks -->
+  <circle cx="88" cy="92" r="6" fill="#FF9EAA" opacity="0.7"/>
+  <circle cx="136" cy="92" r="6" fill="#FF9EAA" opacity="0.7"/>
+  <!-- beak -->
+  <ellipse cx="112" cy="94" rx="13" ry="7" fill="#FF8C42"/>
+  <path d="M100 94 q12 6 24 0" stroke="#E0702A" stroke-width="1.5" fill="none"/>
+  <!-- magnifying glass -->
+  <circle cx="150" cy="140" r="16" fill="#CDEBFF" stroke="#5B6B7A" stroke-width="5"/>
+  <rect x="160" y="152" width="8" height="22" rx="4" fill="#5B6B7A" transform="rotate(-40 164 163)"/>
+  <!-- tiny table grid in lens -->
+  <path d="M140 136 h20 M140 144 h20 M150 128 v24" stroke="#5B9BD5" stroke-width="2"/>
+</svg>

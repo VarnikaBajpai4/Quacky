@@ -36,5 +36,8 @@ Repository = "https://github.com/VarnikaBajpai4/Quacky"
 [tool.setuptools]
 packages = ["quacky"]
 
+[tool.setuptools.package-data]
+quacky = ["static/*.svg", "static/fonts/*"]  # UI avatar, heading font and its OFL license
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

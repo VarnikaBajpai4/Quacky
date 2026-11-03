@@ -1,8 +1,9 @@
 """Streamlit UI for Quacky. Runs on this machine only.
 
-Start it with `quacky-ui`, which binds to localhost and turns off Streamlit's
-usage statistics. Load files or paths, then ask questions in plain English or
-run your own SQL. Each browser session gets its own DuckDB connection.
+Start it with `quacky-ui`, which binds to localhost, turns off Streamlit's
+usage statistics and applies the theme. Load files or paths, then ask
+questions in plain English or run your own SQL. Each browser session gets its
+own DuckDB connection.
 """
 
 import tempfile
@@ -19,15 +20,71 @@ from quacky.llm import MODEL, PROVIDER, Answer, api_error_message, ask, make_cli
 from quacky.runner import QueryTimeoutError, UnsafeQueryError, lock_down, run_safe
 from quacky.schema import describe_schema
 
-AVATAR = Path(__file__).resolve().parent.parent / "assets" / "quacky-avatar.svg"
+AVATAR = Path(__file__).resolve().parent / "static" / "quacky-avatar.svg"
+AVATAR_URL = "app/static/quacky-avatar.svg"  # served by Streamlit's static file serving
 SAMPLE = ["data/chinook.db", "data/countries.csv", "data/messy.xlsx"]
 UPLOAD_TYPES = ["csv", "xlsx", "db", "sqlite", "sqlite3"]
 TIMEOUT_S = 10
 MAX_ROWS = 1000
 
+# Only what the theme settings in ui.py cannot do: the bundled heading font,
+# browser surfaces (selection, caret, scrollbars, focus), the header, and one
+# moment of motion (ripples spreading from the duck when the page opens).
+STYLE = """
+<style>
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("app/static/fonts/BricolageGrotesque-latin.woff2") format("woff2");
+  font-weight: 500 800;
+  font-display: swap;
+}
+:root { --qk-yellow: #FFD84D; --qk-ink: #1C1704; --qk-line: #24393F; --qk-muted: #A9B7B0; }
+::selection { background: rgba(255, 216, 77, 0.30); color: #FFF8E4; }
+* { caret-color: var(--qk-yellow); scrollbar-width: thin; scrollbar-color: var(--qk-line) transparent; }
+:focus-visible { outline: 2px solid var(--qk-yellow) !important; outline-offset: 2px; }
+[data-testid="stDecoration"] { display: none; }
+[data-testid="stHeader"] { background: transparent; }
+.block-container { max-width: 980px; padding-top: 2.5rem; }
+[data-testid="stSidebar"] { border-right: 1px solid var(--qk-line); }
+
+/* Primary buttons: dark text on duck yellow, not white. */
+button[kind="primary"], button[kind="primary"] p { color: var(--qk-ink) !important; font-weight: 600; }
+
+/* Numbers in tables and meta lines line up. */
+[data-testid="stDataFrame"], .qk-meta { font-variant-numeric: tabular-nums; }
+
+.qk-hero { display: flex; align-items: center; gap: 1.1rem; margin: 0 0 1.6rem; }
+.qk-duck { position: relative; width: 64px; height: 64px; flex: none; }
+.qk-duck img { position: relative; width: 64px; height: 64px; z-index: 1; display: block; }
+.qk-duck::before, .qk-duck::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  border: 1.5px solid rgba(255, 216, 77, 0.45); opacity: 0;
+  animation: qk-ripple 2.4s cubic-bezier(0.16, 1, 0.3, 1) 0.2s 1 both;
+}
+.qk-duck::after { animation-delay: 0.65s; }
+@keyframes qk-ripple { from { transform: scale(1); opacity: 0.9; } to { transform: scale(2.3); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .qk-duck::before, .qk-duck::after { animation: none; } }
+.qk-hero h1 {
+  font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: 2.6rem;
+  letter-spacing: -0.03em; line-height: 1; margin: 0; padding: 0; color: #FFF4D6;
+}
+.qk-hero p { margin: 0.35rem 0 0; color: var(--qk-muted); font-size: 1rem; }
+
+.qk-empty { text-align: center; padding: 3.5rem 1rem 1.5rem; }
+.qk-empty h2 {
+  font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; font-size: 1.9rem;
+  letter-spacing: -0.02em; margin: 0 0 0.5rem; color: #FFF4D6;
+}
+.qk-empty p { color: var(--qk-muted); max-width: 34rem; margin: 0 auto; line-height: 1.6; }
+.qk-meta { color: var(--qk-muted); font-size: 0.82rem; }
+</style>
+"""
+
 
 def main() -> None:
-    st.set_page_config(page_title="Quacky", page_icon="🦆", layout="wide")
+    st.set_page_config(page_title="Quacky", page_icon=str(AVATAR), layout="wide",
+                       initial_sidebar_state="expanded")
+    st.html(STYLE)
     load_dotenv(find_dotenv(usecwd=True))
     state = st.session_state
     state.setdefault("con", None)
@@ -38,40 +95,76 @@ def main() -> None:
     with st.sidebar:
         _sidebar(state)
 
-    st.title("🦆 Quacky")
-    st.caption("Ask your data questions in plain English. Runs on your machine.")
+    _hero()
     if state.con is None:
-        st.info("Load some data in the sidebar to start: upload files, or type local paths.")
+        _empty_state(state)
         return
 
-    ask_tab, sql_tab, schema_tab = st.tabs(["Ask", "SQL", "Schema"])
+    ask_tab, sql_tab, schema_tab = st.tabs([":material/forum: Ask", ":material/terminal: SQL",
+                                            ":material/table_chart: Schema"])
     with ask_tab:
         _ask_tab(state)
     with sql_tab:
         _sql_tab(state)
     with schema_tab:
+        st.caption("This is exactly what the model reads before it writes SQL.")
         st.code(state.schema, language=None)
 
 
+def _hero() -> None:
+    st.html(f"""
+    <div class="qk-hero">
+      <div class="qk-duck"><img src="{AVATAR_URL}" alt=""></div>
+      <div>
+        <h1>Quacky</h1>
+        <p>Ask anything about your data. You quack, it queries.</p>
+      </div>
+    </div>
+    """)
+
+
+def _empty_state(state) -> None:
+    st.html("""
+    <div class="qk-empty">
+      <h2>The pond is quiet</h2>
+      <p>Drop a CSV, Excel or SQLite file in the sidebar, or type a local path or a Postgres URL.
+      Everything stays on this machine. Only your question and a few sample values go to the model.</p>
+    </div>
+    """)
+    if _sample_available():
+        _, middle, _ = st.columns([1, 1, 1])
+        if middle.button("Try the sample data", icon=":material/water_drop:", use_container_width=True):
+            _load(state, [], SAMPLE)
+            st.rerun()
+
+
 def _sidebar(state) -> None:
-    if AVATAR.is_file():
-        st.image(str(AVATAR), width=80)
-    st.header("Data")
-    uploads = st.file_uploader("Upload files", type=UPLOAD_TYPES, accept_multiple_files=True)
-    paths = st.text_area("Or local paths / a Postgres URL, one per line",
-                         placeholder="data/chinook.db\npostgresql://user:password@host/db")
-    if st.button("Load data", type="primary"):
+    st.subheader("Your data")
+    uploads = st.file_uploader("Files", type=UPLOAD_TYPES, accept_multiple_files=True)
+    paths = st.text_area("Local paths or a Postgres URL, one per line", height=90,
+                         placeholder="data/sales.csv\npostgresql://user@host/db")
+    if st.button("Load data", type="primary", icon=":material/add:", use_container_width=True):
         _load(state, uploads, paths.splitlines())
-    if all(Path(p).is_file() for p in SAMPLE) and st.button("Load sample data"):
+    if _sample_available() and st.button("Use sample data", icon=":material/water_drop:",
+                                         use_container_width=True):
         _load(state, [], SAMPLE)
 
-    for name, count in state.loaded:
-        st.caption(f"✓ {name}: {count} table(s)")
+    if state.loaded:
+        st.markdown("**In the pond**")
+        for name, count in state.loaded:
+            st.markdown(f":green[:material/check_circle:] {Path(name).name} "
+                        f"<span class='qk-meta'>· {count} table{'s' if count != 1 else ''}</span>",
+                        unsafe_allow_html=True)
 
-    with st.expander("Model"):
+    st.divider()
+    with st.expander("Model", icon=":material/tune:"):
         st.text_input("OpenRouter model", value=MODEL, key="model")
         st.text_input("Pinned provider endpoint", value=PROVIDER, key="provider")
-    st.caption(f"Spent this session: ${state.total_cost:.5f}")
+    st.html(f"<p class='qk-meta'>Spent this session: ${state.total_cost:.5f}</p>")
+
+
+def _sample_available() -> bool:
+    return all(Path(p).is_file() for p in SAMPLE)
 
 
 def _load(state, uploads, lines: list[str]) -> None:
@@ -96,7 +189,7 @@ def _load(state, uploads, lines: list[str]) -> None:
             loaded.append((name, len(load_source(con, source))))
         except (ValueError, FileNotFoundError, RuntimeError, duckdb.Error) as e:
             con.close()
-            st.sidebar.error(f"Could not load {name}: {e}")
+            st.sidebar.error(f"Could not load {name}: {e}", icon=":material/error:")
             return
 
     lock_down(con)  # only after every source is loaded
@@ -110,20 +203,25 @@ def _ask_tab(state) -> None:
     client = make_client()
     if client is None:
         st.warning("No API key found. Put OPENROUTER_API_KEY=... in a .env file in the folder "
-                   "where you start Quacky. You can still run your own SQL in the SQL tab.")
+                   "where you start Quacky. Your own SQL still works in the SQL tab.",
+                   icon=":material/key:")
+    elif not state.history:
+        st.caption("Ask in plain English. Quacky writes the SQL, checks it, runs it, "
+                   "and shows the answer.")
 
     for answer in state.history:
         _show_answer(answer)
 
-    question = st.chat_input("Ask a question about your data", max_chars=1000, disabled=client is None)
+    question = st.chat_input("Ask the duck, e.g. which artist has the most albums?",
+                             max_chars=1000, disabled=client is None)
     if not question:
         return
-    with st.spinner("Writing SQL..."):
+    with st.spinner("Quacking up some SQL..."):
         try:
             answer = ask(state.con, client, state.schema, question, model=state.model,
                          provider=state.provider, timeout_s=TIMEOUT_S, max_rows=MAX_ROWS)
         except openai.APIError as e:
-            st.error(api_error_message(e))
+            st.error(api_error_message(e), icon=":material/cloud_off:")
             return
     state.history.append(answer)
     state.total_cost += answer.cost_usd
@@ -131,22 +229,28 @@ def _ask_tab(state) -> None:
 
 
 def _show_answer(answer: Answer) -> None:
-    with st.chat_message("user"):
-        st.write(answer.question)
-    with st.chat_message("assistant", avatar="🦆"):
-        if answer.note:
-            st.write(answer.note)
-        for i, attempt in enumerate(answer.attempts, start=1):
-            if attempt.error:
-                st.caption(f"Try {i} failed: {attempt.error.splitlines()[0]}")
-        if answer.sql:
-            st.code(_pretty(answer.sql), language="sql")
+    with st.chat_message("user", avatar=":material/person:"):
+        st.markdown(answer.question)
+    with st.chat_message("assistant", avatar=str(AVATAR)):
         if answer.ok:
             _show_table(answer.df)
         elif answer.attempts:
-            st.warning(f"No answer after {len(answer.attempts)} tries.")
-        st.caption(f"{answer.input_tokens} tokens in ({answer.cached_tokens} cached), "
-                   f"{answer.output_tokens} out · ${answer.cost_usd:.5f}")
+            st.warning(f"No answer after {len(answer.attempts)} tries. Try asking another way.",
+                       icon=":material/help:")
+        if answer.note:
+            st.markdown(answer.note)
+
+        if answer.attempts:
+            tries = len(answer.attempts)
+            label = "SQL" if tries == 1 else f"SQL · {tries} tries"
+            with st.expander(label, icon=":material/code:"):
+                for i, attempt in enumerate(answer.attempts, start=1):
+                    if attempt.error:
+                        st.caption(f"Try {i} failed: {attempt.error.splitlines()[0]}")
+                st.code(_pretty(answer.sql), language="sql")
+        st.html(f"<p class='qk-meta'>{answer.input_tokens:,} tokens in "
+                f"({answer.cached_tokens:,} cached) · {answer.output_tokens:,} out · "
+                f"${answer.cost_usd:.5f}</p>")
 
 
 def _pretty(sql: str) -> str:
@@ -158,30 +262,31 @@ def _pretty(sql: str) -> str:
 
 
 def _sql_tab(state) -> None:
-    sql = st.text_area("Your SQL (one read-only query)", height=120, key="sql")
-    if not st.button("Run"):
+    sql = st.text_area("Your SQL: one read-only query", height=130, key="sql",
+                       placeholder="SELECT * FROM countries LIMIT 10")
+    if not st.button("Run", type="primary", icon=":material/play_arrow:"):
         return
     try:
         df = run_safe(state.con, sql, timeout_s=TIMEOUT_S, max_rows=MAX_ROWS)
     except UnsafeQueryError as e:
-        st.error(f"Rejected: {e}")
+        st.error(f"Rejected: {e}", icon=":material/block:")
     except QueryTimeoutError as e:
-        st.error(f"Timeout: {e}")
+        st.error(f"Timeout: {e}", icon=":material/timer_off:")
     except duckdb.Error as e:
-        st.error(f"SQL error: {e}")
+        st.error(f"SQL error: {e}", icon=":material/error:")
     else:
         _show_table(df)
 
 
 def _show_table(df) -> None:
     if df.empty:
-        st.write("(no rows)")
+        st.markdown("No rows match.")
         return
     st.dataframe(df, hide_index=True)
-    note = f"{len(df)} row(s)"
+    note = f"{len(df):,} row{'s' if len(df) != 1 else ''}"
     if df.attrs.get("truncated"):
-        note += f", cut at the {MAX_ROWS}-row limit"
-    st.caption(note)
+        note += f", cut at the {MAX_ROWS:,}-row limit"
+    st.html(f"<p class='qk-meta'>{note}</p>")
 
 
 main()
