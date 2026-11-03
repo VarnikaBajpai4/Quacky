@@ -37,6 +37,14 @@ quacky data/chinook.db data/countries.csv data/messy.xlsx
 
 (`python -m quacky.cli ...` works too.)
 
+### Web UI
+
+```bash
+quacky-ui
+```
+
+Opens Quacky in your browser at http://localhost:8501. Upload files or type local paths, then ask questions in the **Ask** tab, run your own SQL in the **SQL** tab, or read the **Schema** tab. The answer shows the SQL, the result table and the cost. `quacky-ui` always listens on localhost only, turns off Streamlit's usage statistics, and hides Streamlit's "Deploy" button.
+
 Quacky loads every source, locks DuckDB (no file access, no config changes), prints the schema, and opens a prompt. Type a question in plain English. The model writes DuckDB SQL, Quacky checks and runs it, and if it fails, the error goes back to the model (up to 3 tries).
 
 Commands: `.sql <query>` (run your own SQL), `.schema`, `.help`, `.quit`. Options: `--timeout` (seconds, default 10), `--max-rows` (default 1000), `--model`, `--provider`.

@@ -23,10 +23,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+ui = ["streamlit>=1.50"]
+dev = ["pytest>=8", "streamlit>=1.50"]
 
 [project.scripts]
 quacky = "quacky.cli:main"
+quacky-ui = "quacky.ui:main"
 
 [project.urls]
 Repository = "https://github.com/VarnikaBajpai4/Quacky"

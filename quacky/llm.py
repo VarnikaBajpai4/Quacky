@@ -90,6 +90,19 @@ def make_client(api_key: str | None = None) -> openai.OpenAI | None:
     return openai.OpenAI(base_url=OPENROUTER_URL, api_key=key) if key else None
 
 
+def api_error_message(error: openai.APIError) -> str:
+    """A short, clear message for an API error, for the CLI and the UI."""
+    if isinstance(error, openai.AuthenticationError):
+        return "API error: no valid API key. Put OPENROUTER_API_KEY=... in the .env file."
+    if isinstance(error, openai.RateLimitError):
+        return "API error: rate limit reached. Wait a moment and try again."
+    if isinstance(error, openai.APIConnectionError):
+        return "API error: cannot reach the API. Check your internet connection."
+    if isinstance(error, openai.APIStatusError):
+        return f"API error {error.status_code}: {error.message}"
+    return f"API error: {error}"
+
+
 def ask(
     con: duckdb.DuckDBPyConnection,
     client: openai.OpenAI,

@@ -9,14 +9,13 @@ The API key is read from OPENROUTER_API_KEY (a .env file in the project works).
 
 import argparse
 import sys
-from urllib.parse import urlparse
 
 import duckdb
 import openai
 from dotenv import find_dotenv, load_dotenv
 
-from quacky.connectors import POSTGRES_PREFIXES, load_source
-from quacky.llm import MODEL, PROVIDER, Answer, ask, make_client
+from quacky.connectors import display_source, load_source
+from quacky.llm import MODEL, PROVIDER, Answer, api_error_message, ask, make_client
 from quacky.runner import QueryTimeoutError, UnsafeQueryError, lock_down, run_safe
 from quacky.schema import describe_schema
 
@@ -42,9 +41,9 @@ def main(argv: list[str] | None = None) -> int:
         try:
             tables = load_source(con, source)
         except (ValueError, FileNotFoundError, RuntimeError, duckdb.Error) as e:
-            print(f"Could not load {_display(source)}: {e}", file=sys.stderr)
+            print(f"Could not load {display_source(source)}: {e}", file=sys.stderr)
             return 1
-        print(f"Loaded {_display(source)}: {len(tables)} table(s)")
+        print(f"Loaded {display_source(source)}: {len(tables)} table(s)")
 
     # Lock only after every source is loaded: after this, no file can be read.
     lock_down(con)
@@ -82,14 +81,8 @@ def main(argv: list[str] | None = None) -> int:
         try:
             answer = ask(con, client, schema_text, line, model=args.model, provider=args.provider,
                          timeout_s=args.timeout, max_rows=args.max_rows)
-        except openai.AuthenticationError:
-            print("API error: no valid API key. Put OPENROUTER_API_KEY=... in the .env file.")
-        except openai.RateLimitError:
-            print("API error: rate limit reached. Wait a moment and try again.")
-        except openai.APIConnectionError:
-            print("API error: cannot reach the API. Check your internet connection.")
-        except openai.APIStatusError as e:
-            print(f"API error {e.status_code}: {e.message}")
+        except openai.APIError as e:
+            print(api_error_message(e))
         else:
             _print_answer(answer, args.max_rows)
 
@@ -131,16 +124,6 @@ def _print_result(df, max_rows: int) -> None:
     if df.attrs.get("truncated"):
         note += f", cut at the {max_rows}-row limit"
     print(f"({note})")
-
-
-def _display(source: str) -> str:
-    """Source text that is safe to print: a Postgres URL loses its password."""
-    if not source.startswith(POSTGRES_PREFIXES):
-        return source
-    url = urlparse(source)
-    if url.password:
-        return source.replace(f":{url.password}@", ":***@")
-    return source
 
 
 if __name__ == "__main__":

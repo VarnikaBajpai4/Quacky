@@ -48,6 +48,16 @@ def load_source(con: duckdb.DuckDBPyConnection, source: str) -> list[str]:
     return _attach(con, str(path), clean_name(path.stem), "sqlite")
 
 
+def display_source(source: str) -> str:
+    """Source text that is safe to print: a Postgres URL loses its password."""
+    if not source.startswith(POSTGRES_PREFIXES):
+        return source
+    url = urlparse(source)
+    if url.password:
+        return source.replace(f":{url.password}@", ":***@")
+    return source
+
+
 def _ensure_unused(con: duckdb.DuckDBPyConnection, names: list[str]) -> None:
     """Fail if a name is used twice or already taken by a table or database."""
     taken = {row[0] for row in con.execute(
